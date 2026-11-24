@@ -3,8 +3,8 @@ import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import { prisma } from "@/src/lib/prisma";
 import type { AccountStatus, Department, Role } from "@prisma/client";
+import { authConfig } from "./auth.config";
 
-// Extend the built-in session/user types for NextAuth v5
 declare module "next-auth" {
   interface User {
     id: string;
@@ -27,10 +27,7 @@ declare module "next-auth" {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  session: { strategy: "jwt" },
-  pages: {
-    signIn: "/login",
-  },
+  ...authConfig,
   providers: [
     Credentials({
       credentials: {
@@ -64,26 +61,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.department = user.department;
-        token.status = user.status;
-        token.companyId = user.companyId;
-      }
-      return token;
-    },
-    async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as Role;
-        session.user.department = (token.department as Department | null) ?? null;
-        session.user.status = token.status as AccountStatus;
-        session.user.companyId = token.companyId as string;
-      }
-      return session;
-    },
-  },
 });
