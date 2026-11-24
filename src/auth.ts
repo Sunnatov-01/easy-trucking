@@ -4,7 +4,7 @@ import { compare } from "bcryptjs";
 import { prisma } from "@/src/lib/prisma";
 import type { AccountStatus, Department, Role } from "@prisma/client";
 
-// Extend the built-in session/JWT types
+// Extend the built-in session/user types for NextAuth v5
 declare module "next-auth" {
   interface User {
     id: string;
@@ -23,16 +23,6 @@ declare module "next-auth" {
       status: AccountStatus;
       companyId: string;
     };
-  }
-}
-
-declare module "next-auth/jwt" {
-  interface JWT {
-    id: string;
-    role: Role;
-    department: Department | null;
-    status: AccountStatus;
-    companyId: string;
   }
 }
 
@@ -86,12 +76,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (token) {
-        session.user.id = token.id;
-        session.user.role = token.role;
-        session.user.department = token.department;
-        session.user.status = token.status;
-        session.user.companyId = token.companyId;
+      if (token && session.user) {
+        session.user.id = token.id as string;
+        session.user.role = token.role as Role;
+        session.user.department = (token.department as Department | null) ?? null;
+        session.user.status = token.status as AccountStatus;
+        session.user.companyId = token.companyId as string;
       }
       return session;
     },
