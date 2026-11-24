@@ -1,0 +1,130 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  COMPANY
+  EMPLOYEE
+  DRIVER
+}
+
+enum Department {
+  DISPATCHER
+  UPDATER
+  ACCOUNTING
+  SAFETY
+  FLEET
+  HR
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum LoadStatus {
+  DISPATCHED
+  AT_PICKUP
+  IN_TRANSIT
+  AT_DELIVERY
+  DELIVERED
+  HOLD
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Company {
+  id                 String        @id @default(cuid())
+  name               String
+  companyCode        String        @unique
+  plan               String        @default("basic")
+  subscriptionStatus String        @default("active")
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  users        User[]
+  drivers      Driver[]
+  loads        Load[]
+  activityLogs ActivityLog[]
+}
+
+model User {
+  id         String        @id @default(cuid())
+  name       String
+  email      String        @unique
+  password   String
+  role       Role
+  department Department?
+  status     AccountStatus @default(PENDING)
+  companyId  String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  driverAsUser Driver?       @relation("DriverUserLogin")
+  assignedTo   Driver[]      @relation("DriverEmployee")
+  activityLogs ActivityLog[]
+}
+
+model Driver {
+  id             String   @id @default(cuid())
+  companyId      String
+  employeeId     String
+  driverUserId   String?  @unique
+  truckNumber    String
+  plateNumber    String
+  driverPercent  Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employee   User    @relation("DriverEmployee", fields: [employeeId], references: [id])
+  driverUser User?   @relation("DriverUserLogin", fields: [driverUserId], references: [id])
+}
+
+model Load {
+  id              String     @id @default(cuid())
+  loadNumber      String
+  unitNumber      String
+  plate           String
+  driverName      String
+  phoneNumber     String
+  route           String
+  miles           Int        @default(0)
+  currentLocation String
+  eta             String
+  status          LoadStatus @default(DISPATCHED)
+  brokerCompany   String
+  ratePercent     String
+  reserve         String     @default("$0")
+  notes           String     @default("")
+  companyId       String
+  company         Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdById     String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  @@index([companyId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String?
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id])
+}
